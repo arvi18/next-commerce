@@ -1,11 +1,11 @@
 import React, { useContext } from "react";
 import { Store } from "../utils/Store";
-import dynamic from 'next/dynamic'
+import dynamic from "next/dynamic";
 import Layout from "../components/Layout";
 import NextLink from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/dist/client/router";
-import axios from "axios"; 
+import axios from "axios";
 import { Link } from "@material-ui/core";
 import {
   Grid,
@@ -27,22 +27,22 @@ import {
 function CartScreen() {
   const { state, dispatch } = useContext(Store);
   const { cartItems } = state.cart;
-  const router=useRouter()
+  const router = useRouter();
 
-  const updatecartHandler=async(item, quantity)=>{
-      const { data } = await axios.get(`/api/products/${item._id}`);
-  
-      if (data.countInStock < quantity) {
-        window.alert("Sorry. Product is out of stock");
-        return;
-      }
-      dispatch({ type: "CART_ADD_ITEM", payload: { ...item, quantity} });
-  }
-  const removeItemHandler=(item)=>{
-      console.log('done')
-      dispatch({ type: "CART_REMOVE_ITEM", payload: item })
-  }
-  const checkoutHandler=()=> router.push('/shipping')
+  const updatecartHandler = async (item, quantity) => {
+    const { data } = await axios.get(`/api/products/${item._id}`);
+
+    if (data.countInStock < quantity) {
+      window.alert("Sorry. Product is out of stock");
+      return;
+    }
+    dispatch({ type: "CART_ADD_ITEM", payload: { ...item, quantity } });
+  };
+  const removeItemHandler = (item) => {
+    console.log("done");
+    dispatch({ type: "CART_REMOVE_ITEM", payload: item });
+  };
+  const checkoutHandler = () => router.push("/shipping");
 
   return (
     <Layout title="Your cart">
@@ -93,7 +93,12 @@ function CartScreen() {
                       {/* const range = function*(from,to) { for(let i = from; i <= to; i++) yield I;}; [...range(3,5)]// => [3, 4, 5] */}
 
                       <TableCell align="left">
-                        <Select value={item.quantity} onChange={e=>updatecartHandler(item, e.target.value)} >
+                        <Select
+                          value={item.quantity}
+                          onChange={(e) =>
+                            updatecartHandler(item, e.target.value)
+                          }
+                        >
                           {[...Array(item.countInStock).keys()].map((x) => (
                             <MenuItem key={x + 1} value={x + 1} align="left">
                               {x + 1}
@@ -103,7 +108,10 @@ function CartScreen() {
                       </TableCell>
                       <TableCell align="left">{item.price}</TableCell>
                       <TableCell align="left">
-                        <Button variant="text" onClick={()=>removeItemHandler(item)}>
+                        <Button
+                          variant="text"
+                          onClick={() => removeItemHandler(item)}
+                        >
                           ❎
                         </Button>
                       </TableCell>
@@ -124,7 +132,12 @@ function CartScreen() {
                   </Typography>
                 </ListItem>
                 <ListItem>
-                  <Button variant="contained" color="primary" fullWidth onClick={checkoutHandler}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    onClick={checkoutHandler}
+                  >
                     Check Out
                   </Button>
                 </ListItem>
@@ -137,6 +150,6 @@ function CartScreen() {
   );
 }
 
-// render page in client side 
+// render page in client side
 // do not intend to expose this page to crawlers
-export default dynamic(()=>Promise.resolve(CartScreen), {ssr:false})
+export default dynamic(() => Promise.resolve(CartScreen), { ssr: false });
