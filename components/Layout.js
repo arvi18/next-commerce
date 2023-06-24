@@ -74,7 +74,7 @@ export default function Layout({ title, children, description }) {
       <Head>
         <title>
           {" "}
-          {title ? `${title} - Shop your Thing!` : "Shop your Thing!"}{" "}
+          {title ? `${title} - FashionAlchemy!` : "FashionAlchemy"}{" "}
         </title>
         {description && <meta name="description" content={description}></meta>}
       </Head>
@@ -84,7 +84,7 @@ export default function Layout({ title, children, description }) {
           <Toolbar>
             <NextLink href="/" passHref>
               <Link>
-                <Typography className={classes.brand}>ShopYourThing</Typography>
+                <Typography className={classes.brand}>FashionAlchemy</Typography>
               </Link>
             </NextLink>
             <div className={classes.grow}></div>
@@ -139,7 +139,7 @@ export default function Layout({ title, children, description }) {
         </AppBar>
         <Container className={classes.main}>{children}</Container>
         <Typography className={classes.footer}>
-          All rights reserved. ShopYourThing
+          All rights reserved. FashionAlchemy
         </Typography>
       </ThemeProvider>
     </div>
