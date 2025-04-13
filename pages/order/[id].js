@@ -101,6 +101,29 @@ function Order() {
           }
         });
         dispatch({ type: 'FETCH_SUCCESS', payload: data });
+
+        // Load PayPal script only after order is fetched and if not paid
+        if (!data.isPaid && !isPending) {
+          loadPaypalScript();
+        }
+      } catch (err) {
+        dispatch({ type: 'FETCH_FAIL', payload: getError(err) });
+      }
+    };
+
+    const loadPaypalScript = async () => {
+      try {
+        const { data } = await axios.get('/api/keys/paypal', {
+          headers: { authorization: `Bearer ${userInfo.token}` },
+        });
+        paypalDispatch({
+          type: 'resetOptions',
+          value: {
+            'client-id': data.clientId,
+            currency: 'USD',
+          },
+        });
+        paypalDispatch({ type: 'setLoadingStatus', value: 'pending' });
       } catch (err) {
         dispatch({ type: 'FETCH_FAIL', payload: getError(err) });
       }
@@ -111,24 +134,6 @@ function Order() {
       fetchOrder();
     }
 
-    // Load PayPal script only when needed
-    if (order._id && !order.isPaid && !isPending) {
-      const loadPaypalScript = async () => {
-        const { data: clientId } = await axios.get('/api/keys/paypal', {
-          headers: { authorization: `Bearer ${userInfo.token}` },
-        });
-        paypalDispatch({
-          type: 'resetOptions',
-          value: {
-            'client-id': clientId,
-            currency: 'USD',
-          },
-        });
-        paypalDispatch({ type: 'setLoadingStatus', value: 'pending' });
-      };
-      loadPaypalScript();
-    }
-
     // Reset payment state if needed
     if (successPay) {
       dispatch({ type: 'PAY_RESET' });
@@ -136,7 +141,7 @@ function Order() {
     if (successDeliver) {
       dispatch({ type: 'DELIVER_RESET' });
     }
-  }, [orderId, userInfo, router, order._id, order.isPaid, isPending, successPay, successDeliver, paypalDispatch]);
+  }, [orderId, userInfo, router, order._id, successPay, successDeliver]);
 
   const { enqueueSnackbar } = useSnackbar();
 
