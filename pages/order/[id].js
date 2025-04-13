@@ -19,12 +19,13 @@ import {
   Card,
   List,
   ListItem,
+  Box,
 } from '@material-ui/core';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import useStyles from '../../utils/styles';
 import { useSnackbar } from 'notistack';
-import { getError } from '../../utils/error';
+import { getError } from '../../utils/clientError';
 import { PayPalButtons, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 
 function reducer(state, action) {
@@ -57,15 +58,15 @@ function reducer(state, action) {
         errorDeliver: '',
       };
     default:
-      state;
+      return state;
   }
 }
 
-function Order({ params }) {
-  const orderId = params.id;
+function Order() {
+  const router = useRouter();
+  const { id: orderId } = router.query;
   const [{ isPending }, paypalDispatch] = usePayPalScriptReducer();
   const classes = useStyles();
-  const router = useRouter();
   const { state } = useContext(Store);
   const { userInfo } = state;
 
@@ -77,49 +78,41 @@ function Order({ params }) {
     order: {},
     error: '',
   });
-  const {
-    shippingAddress,
-    paymentMethod,
-    orderItems,
-    itemsPrice,
-    taxPrice,
-    shippingPrice,
-    totalPrice,
-    isPaid,
-    paidAt,
-    isDelivered,
-    deliveredAt,
-  } = order;
 
   useEffect(() => {
-    if (!userInfo) {
-      return router.push('/login');
+    // Don't proceed if orderId is not available yet
+    if (!orderId) {
+      return;
     }
+
+    if (!userInfo) {
+      router.push('/login');
+      return;
+    }
+
     const fetchOrder = async () => {
       try {
         dispatch({ type: 'FETCH_REQUEST' });
         const { data } = await axios.get(`/api/orders/${orderId}`, {
-          headers: { authorization: `Bearer ${userInfo.token}` },
+          headers: { 
+            authorization: `Bearer ${userInfo.token}`,
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
         });
         dispatch({ type: 'FETCH_SUCCESS', payload: data });
       } catch (err) {
         dispatch({ type: 'FETCH_FAIL', payload: getError(err) });
       }
     };
-    if (
-      !order._id ||
-      successPay ||
-      successDeliver ||
-      (order._id && order._id !== orderId)
-    ) {
+
+    // Only fetch if we don't have the order or if the order ID has changed
+    if (!order._id || order._id !== orderId) {
       fetchOrder();
-      if (successPay) {
-        dispatch({ type: 'PAY_RESET' });
-      }
-      if (successDeliver) {
-        dispatch({ type: 'DELIVER_RESET' });
-      }
-    } else {
+    }
+
+    // Load PayPal script only when needed
+    if (order._id && !order.isPaid && !isPending) {
       const loadPaypalScript = async () => {
         const { data: clientId } = await axios.get('/api/keys/paypal', {
           headers: { authorization: `Bearer ${userInfo.token}` },
@@ -135,7 +128,16 @@ function Order({ params }) {
       };
       loadPaypalScript();
     }
-  }, [order, successPay, successDeliver]);
+
+    // Reset payment state if needed
+    if (successPay) {
+      dispatch({ type: 'PAY_RESET' });
+    }
+    if (successDeliver) {
+      dispatch({ type: 'DELIVER_RESET' });
+    }
+  }, [orderId, userInfo, router, order._id, order.isPaid, isPending, successPay, successDeliver, paypalDispatch]);
+
   const { enqueueSnackbar } = useSnackbar();
 
   function createOrder(data, actions) {
@@ -143,7 +145,7 @@ function Order({ params }) {
       .create({
         purchase_units: [
           {
-            amount: { value: totalPrice },
+            amount: { value: order.totalPrice },
           },
         ],
       })
@@ -151,6 +153,7 @@ function Order({ params }) {
         return orderID;
       });
   }
+
   function onApprove(data, actions) {
     return actions.order.capture().then(async function (details) {
       try {
@@ -193,15 +196,30 @@ function Order({ params }) {
     }
   }
 
+  // Show loading state while orderId is not available
+  if (!orderId) {
+    return (
+      <Layout title="Loading...">
+        <Box display="flex" justifyContent="center" mt={3}>
+          <CircularProgress />
+        </Box>
+      </Layout>
+    );
+  }
+
   return (
     <Layout title={`Order ${orderId}`}>
       <Typography component="h1" variant="h1">
         Order {orderId}
       </Typography>
       {loading ? (
-        <CircularProgress />
+        <Box display="flex" justifyContent="center" mt={3}>
+          <CircularProgress />
+        </Box>
       ) : error ? (
-        <Typography className={classes.error}>{error}</Typography>
+        <Box display="flex" justifyContent="center" mt={3}>
+          <Typography color="error">{error}</Typography>
+        </Box>
       ) : (
         <Grid container spacing={1}>
           <Grid item md={9} xs={12}>
@@ -213,15 +231,15 @@ function Order({ params }) {
                   </Typography>
                 </ListItem>
                 <ListItem>
-                  {shippingAddress.fullName}, {shippingAddress.address},{' '}
-                  {shippingAddress.city}, {shippingAddress.postalCode},{' '}
-                  {shippingAddress.country}
+                  {order.shippingAddress?.fullName}, {order.shippingAddress?.address},{' '}
+                  {order.shippingAddress?.city}, {order.shippingAddress?.postalCode},{' '}
+                  {order.shippingAddress?.country}
                   &nbsp;
-                  {shippingAddress.location && (
+                  {order.shippingAddress?.location && (
                     <Link
                       variant="button"
                       target="_new"
-                      href={`https://maps.google.com?q=${shippingAddress.location.lat},${shippingAddress.location.lng}`}
+                      href={`https://maps.google.com?q=${order.shippingAddress.location.lat},${order.shippingAddress.location.lng}`}
                     >
                       Show On Map
                     </Link>
@@ -229,8 +247,8 @@ function Order({ params }) {
                 </ListItem>
                 <ListItem>
                   Status:{' '}
-                  {isDelivered
-                    ? `delivered at ${deliveredAt}`
+                  {order.isDelivered
+                    ? `delivered at ${order.deliveredAt}`
                     : 'not delivered'}
                 </ListItem>
               </List>
@@ -242,9 +260,9 @@ function Order({ params }) {
                     Payment Method
                   </Typography>
                 </ListItem>
-                <ListItem>{paymentMethod}</ListItem>
+                <ListItem>{order.paymentMethod}</ListItem>
                 <ListItem>
-                  Status: {isPaid ? `paid at ${paidAt}` : 'not paid'}
+                  Status: {order.isPaid ? `paid at ${order.paidAt}` : 'not paid'}
                 </ListItem>
               </List>
             </Card>
@@ -267,7 +285,7 @@ function Order({ params }) {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {orderItems.map((item) => (
+                        {order.orderItems?.map((item) => (
                           <TableRow key={item._id}>
                             <TableCell>
                               <NextLink href={`/product/${item.slug}`} passHref>
@@ -316,7 +334,7 @@ function Order({ params }) {
                       <Typography>Items:</Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography align="right">${itemsPrice}</Typography>
+                      <Typography align="right">${order.itemsPrice}</Typography>
                     </Grid>
                   </Grid>
                 </ListItem>
@@ -326,7 +344,7 @@ function Order({ params }) {
                       <Typography>Tax:</Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography align="right">${taxPrice}</Typography>
+                      <Typography align="right">${order.taxPrice}</Typography>
                     </Grid>
                   </Grid>
                 </ListItem>
@@ -336,7 +354,7 @@ function Order({ params }) {
                       <Typography>Shipping:</Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography align="right">${shippingPrice}</Typography>
+                      <Typography align="right">${order.shippingPrice}</Typography>
                     </Grid>
                   </Grid>
                 </ListItem>
@@ -349,12 +367,12 @@ function Order({ params }) {
                     </Grid>
                     <Grid item xs={6}>
                       <Typography align="right">
-                        <strong>${totalPrice}</strong>
+                        <strong>${order.totalPrice}</strong>
                       </Typography>
                     </Grid>
                   </Grid>
                 </ListItem>
-                {!isPaid && (
+                {!order.isPaid && (
                   <ListItem>
                     {isPending ? (
                       <CircularProgress />
@@ -389,10 +407,6 @@ function Order({ params }) {
       )}
     </Layout>
   );
-}
-
-export async function getServerSideProps({ params }) {
-  return { props: { params } };
 }
 
 export default dynamic(() => Promise.resolve(Order), { ssr: false });

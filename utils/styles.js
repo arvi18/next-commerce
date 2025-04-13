@@ -38,6 +38,38 @@ const useStyles = makeStyles({
   },
   error:{
     color:'f04040'
-  }
+  },
+  errorContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '60vh',
+    textAlign: 'center',
+    padding: '2rem',
+  },
+  errorButton: {
+    marginTop: '2rem',
+  },
+  successContainer: {
+    marginTop: 4,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: 2,
+  },
+  successTitle: {
+    marginBottom: 4,
+    color: 'success.main',
+    textAlign: 'center',
+  },
+  successCard: {
+    maxWidth: 600,
+    width: '100%',
+    padding: 3,
+    marginBottom: 4,
+    backgroundColor: 'background.paper',
+    boxShadow: 4,
+  },
 });
 export default useStyles;

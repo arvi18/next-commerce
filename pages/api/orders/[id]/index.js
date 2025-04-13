@@ -1,17 +1,16 @@
-import nc from "next-connect";
-import Order from "../../../../models/Order";
-import { isAuth } from "../../../../utils/auth";
-import db from "../../../../utils/db";
+import Order from '../../../../models/Order';
+import db from '../../../../utils/db';
 
-
-const handler = nc();
-
-handler.user(isAuth)
-handler.get(async (req, res) => {
+const handler = async (req, res) => {
   await db.connect();
-  const order = await Order.find({});
+
+  const order = await Order.findById(req.query.id);
+  if (!order) {
+    return res.status(404).send({ message: 'Order not found' });
+  }
+
   await db.disconnect();
   res.send(order);
-});
+};
 
 export default handler;

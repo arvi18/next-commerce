@@ -18,6 +18,7 @@ import {
 import { useSnackbar } from "notistack";
 
 export default function Payment() {
+  console.info('🔵 [INFO] Payment - Component mounted');
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const classes = useStyles();
   const router = useRouter();
@@ -26,24 +27,51 @@ export default function Payment() {
   const {
     cart: { shippingAddress },
   } = state;
+
   useEffect(() => {
+    console.info('🔵 [INFO] Payment - Checking shipping address');
     if (!shippingAddress.address) {
+      console.warn('⚠️ [WARN] Payment - No shipping address found, redirecting to shipping page');
       router.push("/shipping");
     } else {
-      setPaymentMethod(Cookies.get("paymentMethod") || "");
+      console.info('🔵 [INFO] Payment - Setting payment method from cookies');
+      const savedPaymentMethod = Cookies.get("paymentMethod");
+      console.info('🔵 [INFO] Payment - Saved payment method:', savedPaymentMethod);
+      setPaymentMethod(savedPaymentMethod || "");
     }
   }, []);
+
   const submitHandler = (e) => {
+    console.info('🔵 [INFO] Payment - Form submission started');
     closeSnackbar();
     e.preventDefault();
+    
     if (!paymentMethod) {
+      console.warn('⚠️ [WARN] Payment - No payment method selected');
       enqueueSnackbar("Payment method is required", { variant: "error" });
     } else {
+      console.info('🔵 [INFO] Payment - Saving payment method:', paymentMethod);
       dispatch({ type: "SAVE_PAYMENT_METHOD", payload: paymentMethod });
       Cookies.set("paymentMethod", paymentMethod);
-      router.push("/placeorder");
+      console.info('🔵 [INFO] Payment - Current state before navigation:', {
+        paymentMethod,
+        cart: state.cart
+      });
+      console.info('🔵 [INFO] Payment - Attempting to navigate to /placeorder');
+      try {
+        router.push("/placeorder");
+        console.info('✅ [SUCCESS] Payment - Navigation to /placeorder initiated');
+      } catch (err) {
+        console.error('❌ [ERROR] Payment - Navigation failed:', err);
+        console.error('❌ [ERROR] Payment - Error details:', {
+          message: err.message,
+          stack: err.stack
+        });
+        enqueueSnackbar("Navigation failed. Please try again.", { variant: "error" });
+      }
     }
   };
+
   return (
     <Layout title="Payment Method">
       <CheckoutWizard activeStep={2}></CheckoutWizard>
@@ -58,7 +86,10 @@ export default function Payment() {
                 aria-label="Payment Method"
                 name="paymentMethod"
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
+                onChange={(e) => {
+                  console.info('🔵 [INFO] Payment - Payment method changed to:', e.target.value);
+                  setPaymentMethod(e.target.value);
+                }}
               >
                 <FormControlLabel
                   label="PayPal"
@@ -88,7 +119,10 @@ export default function Payment() {
               fullWidth
               type="button"
               variant="contained"
-              onClick={() => router.push("/shipping")}
+              onClick={() => {
+                console.info('🔵 [INFO] Payment - Going back to shipping page');
+                router.push("/shipping");
+              }}
             >
               Back
             </Button>
